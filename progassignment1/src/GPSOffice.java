@@ -138,6 +138,7 @@ public class GPSOffice implements GPSOfficeRef {
 	
 	private void checkneighborlist(ArrayList<String> list, Double nearest)
 			throws RemoteException, NotBoundException {
+		int connectionscreated=0;
 		
 		for (String office : list) {
            
