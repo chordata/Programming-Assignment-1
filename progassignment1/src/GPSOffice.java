@@ -32,11 +32,11 @@ public class GPSOffice implements GPSOfficeRef {
 	private double X;
 	private double Y;
 	private RegistryProxy registry;
-	private ArrayList<String> neighbors=new ArrayList<String>();
-	private ArrayList<Double> neighbourdist=new ArrayList<Double>() ;
-	
+	private ArrayList<String> neighbors = new ArrayList<String>();
+	private ArrayList<Double> neighbourdist = new ArrayList<Double>();
 
-	public GPSOffice(String[] args) throws IOException, NotBoundException {
+	public GPSOffice(String[] args) throws IOException, NotBoundException,
+	IndexOutOfBoundsException {
 		// Parse command line arguments.
 		if (args.length != 5) {
 			throw new IllegalArgumentException(
@@ -74,80 +74,76 @@ public class GPSOffice implements GPSOfficeRef {
 
 		List<String> lookuplist = this.getList();
 
-		if(lookuplist.size()>1)
-		{
-		
-		HashMap<Double,ArrayList<String>> GPSOfficedistance=new HashMap<Double, ArrayList<String>>();
-		
-		for (String string : lookuplist) {
+		if (lookuplist.size() > 1) {
 
-			if(!string.equals(name))
-			{
-			
-			GPSOfficeRef office = lookup(string);
-			Double distance = distance(office);
-			
-			if(!GPSOfficedistance.containsKey(distance))
-			{
-				
-				ArrayList<String> locations=new ArrayList<String>();
-				
-				GPSOfficedistance.put(distance, locations);
-			
+			HashMap<Double, ArrayList<String>> GPSOfficedistance = new HashMap<Double, ArrayList<String>>();
+
+			for (String string : lookuplist) {
+
+				if (!string.equals(name)) {
+
+					GPSOfficeRef office = lookup(string);
+					Double distance = distance(office);
+
+					if (!GPSOfficedistance.containsKey(distance)) {
+
+						ArrayList<String> locations = new ArrayList<String>();
+
+						GPSOfficedistance.put(distance, locations);
+
+					}
+
+					GPSOfficedistance.get(distance).add(string);
+
+				}
+
 			}
-			
-				GPSOfficedistance.get(distance).add(string);
-					
+
+			Collection<Double> officedistset = GPSOfficedistance.keySet();
+
+			List<Double> dist = new ArrayList<Double>(officedistset);
+
+			Collections.sort(dist);
+			int sortedindex = 0;
+			while (neighbors.size() < 3
+					&& neighbors.size() != (lookuplist.size() - 1)) {
+				System.out.println("index: " + sortedindex + " "
+						+ neighbors.size() + " " + (lookuplist.size() - 1));
+				double nearest = dist.get(sortedindex);
+				sortedindex++;
+				ArrayList<String> nearestlist = GPSOfficedistance.get(nearest);
+
+				checkneighborlist(nearestlist, nearest);
 			}
-			
 		}
-		
-		Collection<Double> officedistset = GPSOfficedistance.keySet();
 
-		List<Double> dist = new ArrayList<Double>(officedistset);
+		List<String> printlist = getList();
 
-		Collections.sort(dist);
-		
-		double nearest=dist.get(0);
-		
-		ArrayList<String> nearestlist=GPSOfficedistance.get(nearest);
-       
-		checkneighborlist(nearestlist,nearest);
- 		
-		}
-		
-		
-		List<String> printlist=getList();
-		
 		for (String string : printlist) {
-			
-			GPSOfficeRef info=lookup(string);
-			System.out.print(info.getname() + ":" );
+
+			GPSOfficeRef info = lookup(string);
+			System.out.print(info.getname() + ":");
 			for (String string2 : info.getneighbors()) {
-				
+
 				System.out.print(string2 + " ");
 			}
 			System.out.println();
-			
-		}
-			
-		}
-		
-		
 
-	
+		}
+
+	}
+
 	private void checkneighborlist(ArrayList<String> list, Double nearest)
 			throws RemoteException, NotBoundException {
-		int connectionscreated=0;
-		
+
 		for (String office : list) {
-           
-			System.out.println("RMI: "+office );
+
+			System.out.println("RMI: " + office);
 			GPSOfficeRef info = lookup(office);
 			ArrayList<Double> distances = info.getneighborDistance();
 			ArrayList<String> neighborslist = info.getneighbors();
 
-			if (distances.size() == 3 && neighbors.size()<3) {
+			if (distances.size() == 3 && neighbors.size() < 3) {
 				int index = -1;
 				for (Double dist : distances) {
 
@@ -155,26 +151,25 @@ public class GPSOffice implements GPSOfficeRef {
 						index = distances.indexOf(dist);
 
 				}
-				if (index != -1&& neighbors.size()<3 ) {
+				if (index != -1 && neighbors.size() < 3) {
 					info.replaceneighbor(neighborslist.get(index), name);
 					neighbors.add(info.getname());
 					neighbourdist.add(distance(info));
-					connectionscreated++;
 				}
 
 			}
-			
-			else if(connectionscreated<3)
-			{
+
+			else if (neighbors.size() < 3) {
 				info.addneighbor(name);
 				neighbors.add(info.getname());
 				neighbourdist.add(distance(info));
-				connectionscreated++;
+
 			}
 
 		}
-	   
-   }
+
+	}
+
 	private static int parseInt(String arg, String name) {
 		try {
 			return Integer.parseInt(arg);
@@ -242,7 +237,7 @@ public class GPSOffice implements GPSOfficeRef {
 
 		distance = Math.pow(
 				Math.pow((this.X - point2[0]), 2)
-						+ Math.pow((this.Y - point2[1]), 2), .5);
+				+ Math.pow((this.Y - point2[1]), 2), .5);
 
 		return distance;
 
@@ -285,9 +280,6 @@ public class GPSOffice implements GPSOfficeRef {
 		return true;
 
 	}
-
-
-
 
 	public String getname() {
 		// TODO Auto-generated method stub
