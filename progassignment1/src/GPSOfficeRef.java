@@ -2,6 +2,8 @@ import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 
+import edu.rit.ds.Lease;
+import edu.rit.ds.RemoteEventListener;
 import edu.rit.ds.registry.NotBoundException;
 
 public interface GPSOfficeRef extends Remote {
@@ -30,4 +32,15 @@ public interface GPSOfficeRef extends Remote {
 	public boolean addneighbor(String add)throws RemoteException,NotBoundException;
 	public String getname()throws RemoteException,NotBoundException;
 
+	
+
+	
+	public long sendpackage(double X , double Y) throws  RemoteException, NotBoundException;
+
+	public  void forward(long trackingno,double x, double y) throws RemoteException, NotBoundException;
+
+	public Lease addListener(RemoteEventListener<NodeEvent> nodeListener) throws RemoteException;
+	public double[] maxneighbordist() throws RemoteException;;
+
+	public void deletenode(String node) throws RemoteException, NotBoundException;
 }
