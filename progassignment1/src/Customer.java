@@ -1,21 +1,11 @@
 
 import edu.rit.ds.Lease;
-import edu.rit.ds.LeaseListener;
 import edu.rit.ds.RemoteEventListener;
 import edu.rit.ds.registry.NotBoundException;
-import edu.rit.ds.registry.RegistryEvent;
-import edu.rit.ds.registry.RegistryEventFilter;
-import edu.rit.ds.registry.RegistryEventListener;
 import edu.rit.ds.registry.RegistryProxy;
-import edu.rit.ds.test.LeaseListener01;
-
 import java.io.Serializable;
 import java.rmi.RemoteException;
-import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.List;
-
-import org.omg.CosNaming.NamingContextExtPackage.AddressHelper;
 
 /**
  * Class Query encapsulates a query in the P2Pedia system. A query is uniquely
@@ -50,31 +40,50 @@ public class Customer
 	private String host;
 	private   int port;
     private  RegistryProxy registry;
-	private   RemoteEventListener<NodeEvent> nodeListener;
-	private LeaseListener listener;
+	private   RemoteEventListener<GPSOfficeEvent> GPSOfficeListener;
 	 String originnode;
-	 private Lease leaseevent;
-	 private String nexthop;
+	private String nexthop;
 	double x;
 	double y;
 	long trackno;
 	
 	
 	
-	public Customer(String args[]) throws RemoteException, NotBoundException
+	public Customer(String args[]) 
 	{
 	
 		if (args.length != 5) usage();
 		 host = args[0];
 		 port = parseInt (args[1], "port");
-		 registry = new RegistryProxy (host, port);
+		 try {
+			registry = new RegistryProxy (host, port);
+		} catch (RemoteException e1) {
+			System.out.println(" Unable to connect to Registry server on host "+ host + " port "+ port);
+	
+		}
 		 originnode=args[2];
 		x=parseDouble(args[3],"x");
 		y=parseDouble(args[4], "y");
-		GPSOfficeRef node = (GPSOfficeRef) registry.lookup (originnode);
-		trackno = node.sendpackage(x,y);
+		GPSOfficeRef node = null;
+		try {
+			node = (GPSOfficeRef) registry.lookup (originnode);
+		} catch (RemoteException e1) {
+			System.out.println(" Error on RMI object for office " + originnode);
+		} catch (NotBoundException e1) {
+			System.out.println(" Unable to retrieve RMI object for office "+ originnode + " as it is not bound to registry");
+			
+		}
+		try {
+			trackno = node.sendpackage(x,y);
+		} catch (RemoteException e1) {
+			System.out.println(" Unable to send package error in RMI of  "+ originnode + " office");
+			e1.printStackTrace();
+		} catch (NotBoundException e1) {
+			System.out.println(" Unable to send package as  "+ originnode + " office not bound to registry");
+
+		}
 		
-		listener=new LeaseListener() {
+	/*	listener=new LeaseListener() {
 			
 			public void leaseRenewed(Lease arg0) {
 				// TODO Auto-generated method stub
@@ -90,34 +99,27 @@ public class Customer
 				// TODO Auto-generated method stub
 				
 			}
-		};
-		nodeListener = new RemoteEventListener<NodeEvent>()
+		};*/
+		GPSOfficeListener = new RemoteEventListener<GPSOfficeEvent>()
 				{
-				public void report (long seqnum, NodeEvent event) throws RemoteException
+				public void report (long seqnum, GPSOfficeEvent event) throws RemoteException
 					{
 					// Print log report on the console.
 					
 					
 					if(event.TrackNo==trackno)
 					{
-					System.out.println(event.nodeID + ":"+ event.message);
+					System.out.println(event.message);
 					
-					if(event.message.contains("delivered"))
+					if(event.message.contains("delivered") || event.message.contains("lost"))
 						System.exit(0);
+					
+				
 					
 					else if(event.nexthop!=null)
 					{
-						System.out.println("nexthop : " + event.nexthop);
-						try {
-							leaseevent.cancel();
-							nexthop=event.nexthop;
-							registerupdate(nexthop);
-							
-						} catch (NotBoundException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-						
+						nexthop=event.nexthop;
+						 listenToNode(nexthop);						
 					}
 					
 					}
@@ -126,24 +128,15 @@ public class Customer
 							
 				}
 				};
-			UnicastRemoteObject.exportObject(nodeListener, 0);
+			try {
+				UnicastRemoteObject.exportObject(GPSOfficeListener, 0);
+			} catch (RemoteException e) {
+				System.out.println(" Unable to export GPSOfficeListener unicast remote object");
+			}
 			
 	}
 	
-	public void registerupdate(String originnode) throws RemoteException, NotBoundException
-	{
-		
-		 leaseevent= listenToNode(originnode);
-		 leaseevent.setListener(listener);
-			
-			/*List<String> lookup=registry.list();
-			for (String string : lookup) {
-				GPSOfficeRef node=(GPSOfficeRef) registry.lookup(string);
-				node.addListener(nodeListener);
-				
-			}
-			*/
-	}
+	
 	
 		
 	/**
@@ -151,11 +144,11 @@ public class Customer
 	 */
 	public static void main
 		(String[] args)
-		throws Exception
+		
 		{
 		
 		   Customer A=new Customer(args);
-		  A.registerupdate(A.originnode);
+		  A.listenToNode(A.originnode);
 		    
 		}
 
@@ -214,12 +207,35 @@ public class Customer
 		}
 	}
 	private Lease listenToNode
-	(String objectName) throws RemoteException, NotBoundException
+	(String objectName) 
 	{
 	
-		System.out.println(objectName);
-		GPSOfficeRef node = (GPSOfficeRef) registry.lookup (objectName);
-		Lease event=node.addListener (nodeListener);
+		//System.out.println(objectName);
+		GPSOfficeRef node = null;
+		try {
+			node = (GPSOfficeRef) registry.lookup (objectName);
+		} catch (RemoteException e) {
+			System.out.println(" Unable to add listener to office "+ objectName + " due to error on RMI");
+
+			e.printStackTrace();
+		} catch (NotBoundException e) {
+			System.out.println(" Unable to add listener to office "+ objectName + " as RMI not bound to registry");
+
+			e.printStackTrace();
+		}
+		Lease event = null;
+		try {
+			event = node.addListener (GPSOfficeListener);
+		} catch (RemoteException e) {
+			System.out.println(" Unable to add listener to office "+ objectName + " due to error on RMI");
+
+			e.printStackTrace();
+		} catch (NotBoundException e) {
+			System.out.println(" Unable to add listener to office "+ objectName + " as RMI not bound to registry");
+
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 		
 	return event;

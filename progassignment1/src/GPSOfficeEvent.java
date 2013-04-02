@@ -5,7 +5,7 @@ import edu.rit.ds.RemoteEvent;
  * P2Pedia system. The node events are used to report query activity to the log
  * programs.
  */
-public class NodeEvent
+public class GPSOfficeEvent
    extends RemoteEvent
    {
    public final String nodeID;
@@ -18,7 +18,7 @@ public class NodeEvent
     * @param  nodeID  ID of node that received a query.
     * @param  query   Query that was received.
     */
-   public NodeEvent
+   public GPSOfficeEvent
       (String nodeID,
        String message,
        long TracNo,String nexthop)
