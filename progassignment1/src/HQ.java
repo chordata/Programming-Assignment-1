@@ -15,84 +15,70 @@ import java.util.HashMap;
 /**
  * Class Log provides the log program in the P2Pedia system.
  */
-public class Log
+public class HQ
 	{
-	private static String host;
-	private static int port;
-	private  RegistryProxy registry;
+	
 	private  RegistryEventListener registryListener;
-	private  RegistryEventFilter registryFilter;
 	private  RemoteEventListener<NodeEvent> nodeListener;
 	private HashMap<Lease, String> leasemap;
-	private static LeaseListener leaselisten;
+	//private static LeaseListener leaselisten;
+	private  String host;
+	private  int port;
+	private  RegistryProxy registry;
 	
-	public Log(String[] args) throws RemoteException
+	public HQ(String[] args) throws RemoteException
 	{
 		if (args.length != 2) usage();
 		String host = args[0];
 		int port = parseInt (args[1], "port");
-         
-		// Get proxy for the Registry Server.
-		registry = new RegistryProxy (host, port);
-
-		// Export a remote event listener object for receiving notifications
-		// from the Registry Server.
+        registry = new RegistryProxy (host, port);
 		leasemap =new HashMap<Lease, String>();
-		 leaselisten=new LeaseListener() {
+		/* leaselisten=new LeaseListener() {
 			
 			public void leaseRenewed(Lease arg0) {
-				// TODO Auto-generated method stub
-				
+		
 			}
 			
 			public void leaseExpired(Lease died) {
-				
 				informnodes(died);
-				// TODO Auto-generated method stub
 				
 			}
 			
 			public void leaseCanceled(Lease arg0) {
-				// TODO Auto-generated method stub
-				
 			}
 		};
-
+*/
 		
 		registryListener = new RegistryEventListener()
 			{
 			public void report (long seqnum, RegistryEvent event)
 				{
-			   Lease eventlease=	listenToNode (event.objectName());
-			    eventlease.setListener(leaselisten);
-			    leasemap.put(eventlease,event.objectName() );
+			      
+				
+				Lease eventlease=	listenToNode (event.objectName());
+			   // eventlease.setListener(leaselisten);
+			   // leasemap.put(eventlease,event.objectName() );
+			   
+				if(eventlease!=null)
 				System.out.println("listening to: "+ eventlease.getExpiration()+ " for "+ event.objectName());
 				}
 			};
 		UnicastRemoteObject.exportObject (registryListener, 0);
 
-		// Export a remote event listener object for receiving notifications
-		// from Node objects.
 		nodeListener = new RemoteEventListener<NodeEvent>()
 			{
 			public void report (long seqnum, NodeEvent event)
 				{
-				// Print log report on the console.
-				System.out.printf ("Node %s -- %s%n",
-					event.nodeID, event.message);
+				    System.out.println(event.message);
 				}
 			};
 		UnicastRemoteObject.exportObject (nodeListener, 0);
 
-		// Tell the Registry Server to notify us when a new Node object is
-		// bound.
 		registry.addEventListener (registryListener);
-
-		// Tell all existing Node objects to notify us of queries.
 		for (String objectName : registry.list ())
 			{
-			 Lease eventlease=	listenToNode (objectName);
-			   leasemap.put(eventlease, objectName);
+			 listenToNode (objectName);
+			//   leasemap.put(eventlease, objectName);
 			}
 		
 
@@ -115,7 +101,7 @@ public class Log
 						GPSOfficeRef officeref=(GPSOfficeRef)registry.lookup(obj);
 					if(officeref!=null)
 					{
-						officeref.deletenode(node);
+					//.deletenode(node);
 					}
 					}
 					}
@@ -144,7 +130,7 @@ public class Log
 		throws Exception
 		{
 		// Parse command line arguments.
-			Log A=new Log(args);	
+			HQ A=new HQ(args);	
 		
 		}
 
@@ -157,14 +143,17 @@ public class Log
 	 * @exception  RemoteException
 	 *     Thrown if a remote error occurred.
 	 */
-	private  Lease listenToNode
+	private  synchronized Lease listenToNode
 		(String objectName)
 		{
 		Lease event = null;
 		try
 			{
 			GPSOfficeRef node = (GPSOfficeRef) registry.lookup (objectName);
-			 event=node.addListener (nodeListener);
+			if(node!=null)
+			event=node.addListener (nodeListener);
+			else 
+				System.out.println(" null value : "+ objectName );
 			}
 		catch (NotBoundException exc)
 			{

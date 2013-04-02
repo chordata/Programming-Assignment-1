@@ -50,9 +50,11 @@ public class Customer
 	private String host;
 	private   int port;
     private  RegistryProxy registry;
-	private static  RemoteEventListener<NodeEvent> nodeListener;
+	private   RemoteEventListener<NodeEvent> nodeListener;
+	private LeaseListener listener;
 	 String originnode;
 	 private Lease leaseevent;
+	 private String nexthop;
 	double x;
 	double y;
 	long trackno;
@@ -71,6 +73,24 @@ public class Customer
 		y=parseDouble(args[4], "y");
 		GPSOfficeRef node = (GPSOfficeRef) registry.lookup (originnode);
 		trackno = node.sendpackage(x,y);
+		
+		listener=new LeaseListener() {
+			
+			public void leaseRenewed(Lease arg0) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			public void leaseExpired(Lease arg0) {
+				System.out.println("Package number "+trackno + " lost by " +nexthop);
+				
+			}
+			
+			public void leaseCanceled(Lease arg0) {
+				// TODO Auto-generated method stub
+				
+			}
+		};
 		nodeListener = new RemoteEventListener<NodeEvent>()
 				{
 				public void report (long seqnum, NodeEvent event) throws RemoteException
@@ -90,7 +110,9 @@ public class Customer
 						System.out.println("nexthop : " + event.nexthop);
 						try {
 							leaseevent.cancel();
-							leaseevent=listenToNode(event.nexthop);
+							nexthop=event.nexthop;
+							registerupdate(nexthop);
+							
 						} catch (NotBoundException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
@@ -108,10 +130,11 @@ public class Customer
 			
 	}
 	
-	public void registerupdate() throws RemoteException, NotBoundException
+	public void registerupdate(String originnode) throws RemoteException, NotBoundException
 	{
 		
 		 leaseevent= listenToNode(originnode);
+		 leaseevent.setListener(listener);
 			
 			/*List<String> lookup=registry.list();
 			for (String string : lookup) {
@@ -132,7 +155,7 @@ public class Customer
 		{
 		
 		   Customer A=new Customer(args);
-		  A.registerupdate();
+		  A.registerupdate(A.originnode);
 		    
 		}
 
